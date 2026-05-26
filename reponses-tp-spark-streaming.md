@@ -1,4 +1,4 @@
-# Reponses au TP - Spark Structured Streaming
+# Reponses au TP - Spark Streaming
 
 ## 4.1 Creation de la session Spark
 
