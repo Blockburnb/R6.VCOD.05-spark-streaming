@@ -2,15 +2,15 @@
 
 ## 4.1 Creation de la session Spark
 
-- `SparkSession.builder` : cree la session Spark.
-- `appName("CensusStreaming")` : nomme l'application.
-- `master("spark://spark-master:7077")` : connecte Spark au master.
-- `config("spark.sql.shuffle.partitions", "4")` : fixe le nombre de partitions de shuffle.
-- `getOrCreate()` : cree ou reutilise la session.
+- `SparkSession.builder` : construit la session.
+- `appName("CensusStreaming")` : donne un nom a l'appli.
+- `master("spark://spark-master:7077")` : relie au master.
+- `config("spark.sql.shuffle.partitions", "4")` : fixe les partitions de shuffle.
+- `getOrCreate()` : cree ou reuse la session.
 
 ## 4.2 Definition du schema
 
-Le schema donne a Spark la structure et le type des colonnes avant la lecture. Cela evite l'inference automatique et rend le streaming plus fiable.
+Le schema dit a Spark comment lire les colonnes. Ca evite qu'il devine tout seul.
 
 ## 5.1 Lecture du repertoire surveille
 
@@ -36,44 +36,83 @@ stream_memory_query = (
 )
 ```
 
-`stream_reader` lit les fichiers. `stream_memory_query` ecrit le resultat dans la table memoire `stream_data_check`.
+`stream_reader` lit les fichiers. `stream_memory_query` envoie le resultat dans la table memoire.
 
 ## 6.1 Ajouter des fichiers progressivement
 
 ### 1. Pourquoi les donnees n’apparaissent-elles pas immediatement ?
 
-Parce que le stream traite les donnees par micro-batch. Il faut attendre le prochain trigger.
+Parce que Spark traite par micro-batch. Il faut attendre le prochain passage.
 
 ### 2. Quel est le role de `maxFilesPerTrigger` ?
 
-Il limite le nombre de fichiers lus a chaque micro-batch. Ici, Spark en traite un seul a la fois.
+Il limite le nombre de fichiers lus a chaque fois. Ici, c'est un fichier par trigger.
 
 ### 3. Quelle difference existe-t-il entre batch et micro-batch ?
 
-Le batch traite un grand ensemble en une fois. Le micro-batch decoupe le traitement en petites etapes regulieres.
+Le batch traite tout d'un coup. Le micro-batch traite petit a petit.
 
 ## 7. Suppression d'un fichier pendant le streaming
 
 ### 1. Les donnees disparaissent-elles du resultat ?
 
-Non, les donnees deja lues restent affichees.
+Non, elles restent.
 
 ### 2. Pourquoi ?
 
-Parce que Spark garde les donnees deja traitees. Supprimer le fichier source ne supprime pas les lignes deja chargees.
+Parce que Spark garde ce qu'il a deja lu.
 
 ### 3. Spark relit-il les anciens fichiers ?
 
-Non, Spark evite de relire un fichier deja traite.
+Non, il evite de le relire.
 
 ### 4. Comment Spark memorise-t-il les fichiers deja traites ?
 
-Spark garde un suivi interne, souvent via le checkpoint, pour savoir quels fichiers ont deja ete lus.
+Spark garde un suivi interne, souvent avec le checkpoint.
 
 ### 5. Que se passe-t-il quand on remet le fichier supprime ?
 
-S'il est detecte comme nouveau, Spark peut le relire. Sinon, il est ignore.
+S'il est vu comme nouveau, il peut etre relu. Sinon, non.
 
 ## 8. Utilisation des tables memoire
 
-Les tables memoire servent a voir le resultat du stream avec Spark SQL pendant que la requete tourne.
+Les tables memoire servent a voir le stream avec Spark SQL.
+
+### 8.1 Creation d’une table memoire
+
+Elle enregistre le flux dans une table en memoire.
+
+### 8.2 Interroger les donnees en SQL
+
+Elle permet de lire la table avec du SQL.
+
+## 9. Aggregations temps reel avec DataFrames
+
+### 9.1 Comptage des lignes
+
+Ca compte le nombre total de lignes.
+
+### 9.2 Affichage temps reel
+
+`complete` affiche tout le resultat a chaque fois.
+
+`append` affiche seulement les nouvelles lignes.
+
+## 10. GroupBy en streaming
+
+### 10.1 Nombre de personnes par niveau d'education
+
+`groupBy("education")` regroupe par niveau d'education puis compte.
+
+### 10.2 Affichage du resultat
+
+Elle affiche le resultat dans la console.
+
+### Travail demande
+
+Les autres agregations font pareil : on regroupe et on calcule.
+
+- Par sexe : `groupBy("sex").count()`.
+- Par pays : `groupBy("native-country").count()`.
+- Moyenne des heures : `groupBy().avg("hours-per-week")`.
+- Moyenne d'age par profession : `groupBy("occupation").avg("age")`.
